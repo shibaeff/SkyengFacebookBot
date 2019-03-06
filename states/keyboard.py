@@ -1,7 +1,12 @@
+class Button(dict):
+    def __init__(self, title):
+        self["type"] = "postback"
+        self["title"] = title
+        self["payload"] = "DEVELOPER_DEFINED_PAYLOAD"
 
 
-class Button(object):
-    def __init__(self, recipient_id, text, title):
+class Keyboard(object):
+    def __init__(self, recipient_id, text, buttons_list):
         self.payload = {
             'message': {
                 # 'text': text
@@ -10,13 +15,7 @@ class Button(object):
                     "payload": {
                         "template_type": "button",
                         "text": text,
-                        "buttons": [
-                            {
-                                "type": "postback",
-                                "title": title,
-                                "payload": "DEVELOPER_DEFINED_PAYLOAD"
-                            }
-                        ]
+                        "buttons": buttons_list
                     }
                 }
             },
