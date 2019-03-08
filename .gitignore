@@ -10,3 +10,5 @@ __pycache__/
 foo\.log\.1
 
 Pipfile
+
+*.1
