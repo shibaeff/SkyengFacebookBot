@@ -19,6 +19,8 @@ PAGE_ACCESS_TOKEN = 'EAAIyscwep5sBAE6cJF4q8ZAiO0mtUwALzlUiG9GYHKCV0JA9Q1ZClEErXX
 bot = Bot(PAGE_ACCESS_TOKEN)
 page = Page(PAGE_ACCESS_TOKEN)
 STATES = dict()
+ENLISTING = set()
+
 
 @app.route('/webhook', methods=['GET'])
 def verify():
@@ -28,8 +30,104 @@ def verify():
         return request.args["hub.challenge"], 200
     return "Hello world", 200
 
-def enlisting():
+
+def save_user_email():
     pass
+
+
+def get_days():
+    return ["20/02", "21/02"]
+
+
+def check_for_existance():
+    return True
+
+
+def write_day(day):
+    pass
+
+
+def get_time():
+    return ["14:00", "17:00"]
+
+
+def write_time():
+    pass
+
+def enlisting(sender_id, messaging_text):
+    current_state = STATES[sender_id]
+    entity, value = wit_response(messaging_text)
+
+    if current_state == "wait_time":
+        write_time()
+        send_message(sender_id,
+                     Keyboard(
+                         text="🎉 Вы записаны. ВУ пройдет {{intro_lesson_date}} в {{intro_lesson_time}}. До встречи!"
+                              "Если передумаете, отменить или изменить запись можно в личном кабинете.",
+                         titles=None
+                     ))
+        send_message(sender_id,
+                     Keyboard(
+                         text="Добавить в календарь?",
+                         titles=["Да", "Нет"]
+                     ))
+        STATES[sender_id] = 'calendar_wait'
+
+    elif current_state == "wait_days":
+        write_day(messaging_text)
+        send_message(sender_id,
+                     Keyboard(
+                         text="👍Great! А теперь выберите удобное время",
+                         titles=get_time()
+                     ))
+        STATES[sender_id] = "wait_time"
+
+    elif current_state == 'enlisting_start':
+        send_message(sender_id, Keyboard(
+            text="Привет 👋 Я запишу вас на бесплатный урок в онлайн-школу английского языка Skyeng."
+                "Давайте проверим, есть ли у вас аккаунт. Он нужен для регистрации на занятие и для доступа на платформу, где будет проходить урок. Если аккаунта нет — я его создам."
+                "Пожалуйста, введите ваш email.",
+            titles=None
+        ))
+        STATES[sender_id] = 'wait_email'
+    elif current_state == 'wait_email':
+        save_user_email()
+        send_message(sender_id,
+                     Keyboard(
+                         text="Отлично! Теперь укажите возраст ученика",
+                         titles=["До 18", "18+"]
+                     ))
+        STATES[sender_id] = 'wait_age'
+    elif current_state == 'wait_age':
+        if value == 'positive':
+            if check_for_existance():
+                send_message(sender_id,
+                         Keyboard(
+                            text="Ура! У вас уже есть аккаунт :)"
+                                 "Если вы забыли пароль, можно установить новый по ссылке {{password_reset_link}}"
+                                 "Чтобы включить программу чтения с экрана, нажмите Ctrl+Alt+Z. Для просмотра списка быстрых клавиш нажмите Ctrl+косая черта.",
+                            titles=None
+                         ))
+            else:
+                send_message(sender_id,
+                             Keyboard(
+                                 text="💫 Done! Я создал вам аккаунт в Skyeng. "
+                                      "Логин: {{customer.email}}, пароль от личного кабинета придет вам на почту.",
+                                 titles=None
+                             ))
+        else:
+            pass
+        days = get_days()
+        send_message(sender_id, Keyboard(
+            text="Выберите день, на который хотите записаться 🗓️",
+            titles=days
+        ))
+        STATES[sender_id] = "wait_days"
+
+
+
+
+
 
 @app.route('/webhook', methods=['POST'])
 def webhook():
@@ -52,6 +150,8 @@ def webhook():
                     # print(sender_id)
 
                     response = "none"
+                    if sender_id in ENLISTING:
+                        enlisting(sender_id, messaging_text)
                     entity, value = wit_response(messaging_text)
                     current_state = STATES.get(sender_id, 'initial')
                     # self.assertEquals(current_state, assert_state)
@@ -106,6 +206,11 @@ def webhook():
                                                   text="Пока!!!")
                                          )
                             STATES[sender_id] = 'initial'
+                        elif value == 'positive':
+
+                            STATES[sender_id] = 'enlisting_start'
+                            ENLISTING.add(sender_id)
+                            enlisting(sender_id, messaging_text)
                     elif current_state == "continue":
                         if value == 'negative':
                             send_message(sender_id, Keyboard(
