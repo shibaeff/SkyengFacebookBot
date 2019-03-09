@@ -44,8 +44,80 @@ class TestWebhook(TestCase):
             current_state = STATES[sender_id]
             entity, value = wit_response(messaging_text)
 
-            self.assertEquals(current_state, assert_state)
-            if current_state == "wait_time":
+            self.assertEqual(current_state, assert_state)
+            if current_state == 'wait_parent_confirm_again':
+                if value == 'positive':
+                    if check_for_existance():
+                        send_message(sender_id,
+                                     Keyboard(
+                                         text="Ура! У вас уже есть аккаунт :)"
+                                              "Если вы забыли пароль, можно установить новый по ссылке {{password_reset_link}}"
+                                              "Чтобы включить программу чтения с экрана, нажмите Ctrl+Alt+Z. Для просмотра списка быстрых клавиш нажмите Ctrl+косая черта.",
+                                         titles=None
+                                     ))
+                    else:
+                        send_message(sender_id,
+                                     Keyboard(
+                                         text="💫 Done! Я создал вам аккаунт в Skyeng. "
+                                              "Логин: {{customer.email}}, пароль от личного кабинета придет вам на почту.",
+                                         titles=None
+                                     ))
+                        days = get_days()
+                        send_message(sender_id, Keyboard(
+                            text="Выберите день, на который хотите записаться 🗓️",
+                            titles=days
+                        ))
+                        STATES[sender_id] = "wait_days"
+                elif value == 'negative':
+                    STATES[sender_id] = "initial"
+                    ENLISTING.remove(sender_id)
+                    send_message(sender_id,
+                                 Keyboard(
+                                     titles=None,
+                                     text="Будем ждать вашего возвращения 🤗"
+                                 ))
+
+            elif current_state == "wait_parent_confirm":
+                if value == 'positive':
+                    # TODO refactor this routine
+                    if check_for_existance():
+                        send_message(sender_id,
+                                     Keyboard(
+                                         text="Ура! У вас уже есть аккаунт :)"
+                                              "Если вы забыли пароль, можно установить новый по ссылке {{password_reset_link}}"
+                                              "Чтобы включить программу чтения с экрана, нажмите Ctrl+Alt+Z. Для просмотра списка быстрых клавиш нажмите Ctrl+косая черта.",
+                                         titles=None
+                                     ))
+                    else:
+                        send_message(sender_id,
+                                     Keyboard(
+                                         text="💫 Done! Я создал вам аккаунт в Skyeng. "
+                                              "Логин: {{customer.email}}, пароль от личного кабинета придет вам на почту.",
+                                         titles=None
+                                     ))
+                        days = get_days()
+                        send_message(sender_id, Keyboard(
+                            text="Выберите день, на который хотите записаться 🗓️",
+                            titles=days
+                        ))
+                        STATES[sender_id] = "wait_days"
+                elif value == 'negative':
+                    STATES[sender_id] = "wait_parent_confirm_again"
+                    send_message(sender_id, Keyboard(
+                        text="К сожалению, мы не можем записать ребенка на урок,"
+                             "если его родитель не сможет присутствовать на занятии 😞",
+                        titles=["Подтверждаю присутствие родителя", "Ну, что ж, жаль"]
+                    ))
+
+            elif current_state == "wait_kid_age":
+                STATES[sender_id] = "wait_parent_confirm"
+                send_message(sender_id,
+                             Keyboard(
+                                 text="Пожалуйста, подтвердите присутствие родителя на уроке."
+                                      "Это обязательное условие, когда ученик младше 18 лет",
+                                 titles=["Подтверждаю", "Не подтверждаю"]
+                             ))
+            elif current_state == "wait_time":
                 write_time()
                 send_message(sender_id,
                              Keyboard(
@@ -102,14 +174,19 @@ class TestWebhook(TestCase):
                                               "Логин: {{customer.email}}, пароль от личного кабинета придет вам на почту.",
                                          titles=None
                                      ))
+                        days = get_days()
+                        send_message(sender_id, Keyboard(
+                            text="Выберите день, на который хотите записаться 🗓️",
+                            titles=days
+                        ))
+                        STATES[sender_id] = "wait_days"
                 else:
-                    pass
-                days = get_days()
-                send_message(sender_id, Keyboard(
-                    text="Выберите день, на который хотите записаться 🗓️",
-                    titles=days
-                ))
-                STATES[sender_id] = "wait_days"
+                    send_message(sender_id,
+                                 Keyboard(
+                                     text="Уточните категорию",
+                                     titles=["До 11 лет", "12+"]
+                                 ))
+                    STATES[sender_id] = 'wait_kid_age'
 
     def webhook(self, pipeline, states_line):
         # log(data)
@@ -245,10 +322,23 @@ class TestWebhook(TestCase):
     #     pipeline = ["Привет", "Да", "Skyeng в цифрах", "Нет", "Да", "До 18"]
     #     states_line = ["initial", "intial_wait", "info_wait", "continue", "thankyou_wait", "wait_age"]
 
-    def test_enlisting(self):
+    def test_enlisting_kid_without_parents(self):
         ENLISTING.add(13)
         STATES[13] = "enlisting_start"
-        self.enlisting(pipeline=[], states=[])
+        self.enlisting(13, pipeline=['something', 'something', 'До 18', "12+", 'Не подтверждаю', 'Ну, что ж, жаль', ],
+                       states=['enlisting_start', 'wait_email', 'wait_age', 'wait_kid_age', 'wait_parent_confirm', 'wait_parent_confirm_again'])
+        self.assertTrue(13 not in ENLISTING)
+        self.assertEqual(STATES[13], 'initial')
+
+    def test_enlisting_strange_kid(self):
+        ENLISTING.add(13)
+        STATES[13] = "enlisting_start"
+        self.enlisting(13, pipeline=['something', 'something', 'До 18', "12+", 'Не подтверждаю', "Подтверждаю присутствие родителя", ],
+                       states=['enlisting_start', 'wait_email', 'wait_age', 'wait_kid_age', 'wait_parent_confirm',
+                               'wait_parent_confirm_again'])
+        
+
+
 if __name__ == "__main__":
     umain()
 
