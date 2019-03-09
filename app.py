@@ -54,11 +54,85 @@ def get_time():
 def write_time():
     pass
 
+
 def enlisting(sender_id, messaging_text):
     current_state = STATES[sender_id]
     entity, value = wit_response(messaging_text)
 
-    if current_state == "wait_time":
+
+    if current_state == 'wait_parent_confirm_again':
+        if value == 'positive':
+            if check_for_existance():
+                send_message(sender_id,
+                             Keyboard(
+                                 text="Ура! У вас уже есть аккаунт :)"
+                                      "Если вы забыли пароль, можно установить новый по ссылке {{password_reset_link}}"
+                                      "Чтобы включить программу чтения с экрана, нажмите Ctrl+Alt+Z. Для просмотра списка быстрых клавиш нажмите Ctrl+косая черта.",
+                                 titles=None
+                             ))
+            else:
+                send_message(sender_id,
+                             Keyboard(
+                                 text="💫 Done! Я создал вам аккаунт в Skyeng. "
+                                      "Логин: {{customer.email}}, пароль от личного кабинета придет вам на почту.",
+                                 titles=None
+                             ))
+                days = get_days()
+                send_message(sender_id, Keyboard(
+                    text="Выберите день, на который хотите записаться 🗓️",
+                    titles=days
+                ))
+                STATES[sender_id] = "wait_days"
+        elif value == 'negative':
+            STATES[sender_id] = "initial"
+            ENLISTING.remove(sender_id)
+            send_message(sender_id,
+                         Keyboard(
+                             titles=None,
+                             text="Будем ждать вашего возвращения 🤗"
+                         ))
+
+    elif current_state == "wait_parent_confirm":
+        if value == 'positive':
+            # TODO refactor this routine
+            if check_for_existance():
+                send_message(sender_id,
+                             Keyboard(
+                                 text="Ура! У вас уже есть аккаунт :)"
+                                      "Если вы забыли пароль, можно установить новый по ссылке {{password_reset_link}}"
+                                      "Чтобы включить программу чтения с экрана, нажмите Ctrl+Alt+Z. Для просмотра списка быстрых клавиш нажмите Ctrl+косая черта.",
+                                 titles=None
+                             ))
+            else:
+                send_message(sender_id,
+                             Keyboard(
+                                 text="💫 Done! Я создал вам аккаунт в Skyeng. "
+                                      "Логин: {{customer.email}}, пароль от личного кабинета придет вам на почту.",
+                                 titles=None
+                             ))
+            days = get_days()
+            send_message(sender_id, Keyboard(
+                text="Выберите день, на который хотите записаться 🗓️",
+                titles=days
+            ))
+            STATES[sender_id] = "wait_days"
+        elif value == 'negative':
+            STATES[sender_id] = "wait_parent_confirm_again"
+            send_message(sender_id, Keyboard(
+                text="К сожалению, мы не можем записать ребенка на урок,"
+                     "если его родитель не сможет присутствовать на занятии 😞",
+                titles=["Подтверждаю присутствие родителя", "Ну, что ж, жаль"]
+            ))
+
+    elif current_state == "wait_kid_age":
+        STATES[sender_id] = "wait_parent_confirm"
+        send_message(sender_id,
+                     Keyboard(
+                         text="Пожалуйста, подтвердите присутствие родителя на уроке."
+                              "Это обязательное условие, когда ученик младше 18 лет",
+                         titles=["Подтверждаю", "Не подтверждаю"]
+                     ))
+    elif current_state == "wait_time":
         write_time()
         send_message(sender_id,
                      Keyboard(
@@ -85,8 +159,8 @@ def enlisting(sender_id, messaging_text):
     elif current_state == 'enlisting_start':
         send_message(sender_id, Keyboard(
             text="Привет 👋 Я запишу вас на бесплатный урок в онлайн-школу английского языка Skyeng."
-                "Давайте проверим, есть ли у вас аккаунт. Он нужен для регистрации на занятие и для доступа на платформу, где будет проходить урок. Если аккаунта нет — я его создам."
-                "Пожалуйста, введите ваш email.",
+                 "Давайте проверим, есть ли у вас аккаунт. Он нужен для регистрации на занятие и для доступа на платформу, где будет проходить урок. Если аккаунта нет — я его создам."
+                 "Пожалуйста, введите ваш email.",
             titles=None
         ))
         STATES[sender_id] = 'wait_email'
@@ -102,12 +176,12 @@ def enlisting(sender_id, messaging_text):
         if value == 'positive':
             if check_for_existance():
                 send_message(sender_id,
-                         Keyboard(
-                            text="Ура! У вас уже есть аккаунт :)"
-                                 "Если вы забыли пароль, можно установить новый по ссылке {{password_reset_link}}"
-                                 "Чтобы включить программу чтения с экрана, нажмите Ctrl+Alt+Z. Для просмотра списка быстрых клавиш нажмите Ctrl+косая черта.",
-                            titles=None
-                         ))
+                             Keyboard(
+                                 text="Ура! У вас уже есть аккаунт :)"
+                                      "Если вы забыли пароль, можно установить новый по ссылке {{password_reset_link}}"
+                                      "Чтобы включить программу чтения с экрана, нажмите Ctrl+Alt+Z. Для просмотра списка быстрых клавиш нажмите Ctrl+косая черта.",
+                                 titles=None
+                             ))
             else:
                 send_message(sender_id,
                              Keyboard(
@@ -115,23 +189,26 @@ def enlisting(sender_id, messaging_text):
                                       "Логин: {{customer.email}}, пароль от личного кабинета придет вам на почту.",
                                  titles=None
                              ))
+            days = get_days()
+            send_message(sender_id, Keyboard(
+                text="Выберите день, на который хотите записаться 🗓️",
+                titles=days
+            ))
+            STATES[sender_id] = "wait_days"
         else:
-            pass
-        days = get_days()
-        send_message(sender_id, Keyboard(
-            text="Выберите день, на который хотите записаться 🗓️",
-            titles=days
-        ))
-        STATES[sender_id] = "wait_days"
-
-
-
+            send_message(sender_id,
+                         Keyboard(
+                             text="Уточните категорию",
+                             titles=["До 11 лет", "12+"]
+                         ))
+            STATES[sender_id] = 'wait_kid_age'
 
 
 
 @app.route('/webhook', methods=['POST'])
 def webhook():
     data = request.get_json()
+    app.logger.info("Got request")
     # log(data)
 
     if data['object'] == 'page':
