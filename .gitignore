@@ -2,3 +2,13 @@
 VIRTUAL/
 
 \.idea/
+
+__pycache__/
+
+*.log
+
+foo\.log\.1
+
+Pipfile
+
+*.1
