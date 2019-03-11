@@ -16,6 +16,8 @@ from logging.handlers import RotatingFileHandler
 app = Flask(__name__)
 
 PAGE_ACCESS_TOKEN = 'EAAIyscwep5sBAE6cJF4q8ZAiO0mtUwALzlUiG9GYHKCV0JA9Q1ZClEErXX5m7uQ0hZCRZCvbMoamdcaL4Nz0aoR7AhlEADUvDmPt2XM2Nv7aXP6hasyZBACVbXiDALQD23P5TYLcFx48i6J0S3dKH1NXVLIHGALRLGIiqndgSqgZDZD'
+DEBUG = True
+VERIFY_TOKEN = "A"
 bot = Bot(PAGE_ACCESS_TOKEN)
 page = Page(PAGE_ACCESS_TOKEN)
 STATES = dict()
@@ -25,7 +27,7 @@ ENLISTING = set()
 @app.route('/webhook', methods=['GET'])
 def verify():
     if request.args.get("hub.mode") == "subscribe" and request.args.get("hub.challenge"):
-        if not request.args.get("hub.verify_token") == "A":
+        if not request.args.get("hub.verify_token") == VERIFY_TOKEN:
             return "Verification token mismatch", 403
         return request.args["hub.challenge"], 200
     return "Hello world", 200
@@ -357,4 +359,4 @@ if __name__ == "__main__":
     handler = RotatingFileHandler('foo.log', maxBytes=10000, backupCount=1)
     handler.setLevel(logging.INFO)
     app.logger.addHandler(handler)
-    app.run(debug=True)
+    app.run(debug=DEBUG)
